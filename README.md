@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Classroom Analytics
 
-## Getting Started
+A responsive student performance analytics dashboard for educators. Explore class-level trends, monitor a 24-student sample roster, review individual student profiles, and record classroom updates.
 
-First, run the development server:
+## Demo features
+
+- Classroom overview with live KPIs, a performance and attendance chart, and students flagged for a check-in
+- Searchable roster with class and support-status filters
+- Click-through student profiles with performance indicators and a recent activity timeline
+- Class comparison and student wellbeing reports
+- Add assessments, attendance, assignments, and behavior notes
+- CSV export of the currently filtered student roster
+- Local browser storage for teacher-entered records
+- Responsive navigation, accessible dialogs, and reduced-motion support
+
+This is a portfolio demo. The roster and trend charts use illustrative sample data; record changes are stored in the current browser only. There is no sign-in, database, cross-device sync, or predictive model. Do not enter real or sensitive student information.
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Quality checks
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
 
-## Learn More
+GitHub Actions runs these checks for pushes and pull requests to `main` and `master`.
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy from GitHub to Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Push this project to a GitHub repository.
+2. In Vercel, choose **Add New → Project** and import that GitHub repository.
+3. Keep the detected **Next.js** framework settings and select **Deploy**.
+4. Vercel builds the production deployment and gives you a public `*.vercel.app` URL. Subsequent pushes to the production branch trigger new deployments automatically.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+No environment variables or external services are required for the demo. Add your final Vercel URL to the project section of your CV after deployment.
