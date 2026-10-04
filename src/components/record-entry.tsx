@@ -2,7 +2,7 @@
 
 import { ArrowDownRight, ArrowUpRight, CalendarDays, Check, ClipboardPlus, FileText, UserRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { students } from "@/lib/mock-data";
+import type { Student } from "@/lib/mock-data";
 import type { RecordCategory, StudentRecord } from "@/lib/student-records";
 
 const categories: RecordCategory[] = ["Assessment", "Attendance", "Assignment", "Behavior"];
@@ -12,14 +12,16 @@ export function RecordEntry({
   storageError,
   onAdd,
   selectedStudentId,
+  students,
 }: {
   records: StudentRecord[];
   storageError: string | null;
   onAdd: (record: StudentRecord) => boolean;
   selectedStudentId?: string;
+  students: Student[];
 }) {
   const [category, setCategory] = useState<RecordCategory>("Assessment");
-  const [studentId, setStudentId] = useState(() => students.find((student) => student.id === selectedStudentId)?.id ?? students[0].id);
+  const [studentId, setStudentId] = useState(() => students.find((student) => student.id === selectedStudentId)?.id ?? students[0]?.id ?? "");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [value, setValue] = useState("");
   const [note, setNote] = useState("");
@@ -30,6 +32,7 @@ export function RecordEntry({
 
   function submitRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!selectedStudent) return;
     const record: StudentRecord = {
       id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `record-${Date.now()}`,
       studentId: selectedStudent.id,
@@ -104,7 +107,7 @@ export function RecordEntry({
             </label>
             <div className="form-submit-row">
               <span className="mock-data-note">Saved locally in this browser</span>
-              <button className="submit-record-button" type="submit" disabled={Boolean(storageError)}><Check size={15} /> Save record</button>
+              <button className="submit-record-button" type="submit" disabled={Boolean(storageError || !students.length)}><Check size={15} /> Save record</button>
             </div>
           </form>
         </section>

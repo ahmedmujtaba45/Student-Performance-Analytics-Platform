@@ -10,7 +10,7 @@ export type Student = {
   color: string;
 };
 
-export const students: Student[] = [
+const baseStudents: Student[] = [
   { id: "ST-1042", name: "Haroon Abdullah", initials: "HA", className: "Year 10A", score: 92, attendance: 98, trend: "up", risk: "On track", color: "lavender" },
   { id: "ST-1038", name: "Muhammad Hassan", initials: "MH", className: "Year 10A", score: 68, attendance: 76, trend: "down", risk: "At risk", color: "peach" },
   { id: "ST-1046", name: "Taimoor Ali", initials: "TA", className: "Year 9B", score: 84, attendance: 91, trend: "up", risk: "On track", color: "mint" },
@@ -36,6 +36,40 @@ export const students: Student[] = [
   { id: "ST-1075", name: "Arham Khan", initials: "AK", className: "Year 9B", score: 94, attendance: 99, trend: "up", risk: "On track", color: "lavender" },
   { id: "ST-1076", name: "Hamza Yousuf", initials: "HY", className: "Year 9B", score: 69, attendance: 78, trend: "down", risk: "At risk", color: "orange" },
 ];
+
+const additionalStudentNames = [
+  "Yusuf Rahman", "Salman Rafiq", "Abdullah Sheikh", "Mohammad Zaid",
+  "Yasir Mehmood", "Saif Mustafa", "Ehsan Khan", "Kashif Raza",
+  "Naveed Iqbal", "Affan Mirza", "Daniyal Shah", "Furqan Haider",
+  "Rameez Akhtar", "Shahzaib Tariq", "Muneeb Aslam", "Waleed Hussain",
+  "Taha Javed", "Subhan Qureshi", "Adeel Mahmood", "Rayan Saeed",
+  "Zohair Ahmad", "Shayan Raza", "Sameer Nawaz", "Areeb Butt",
+];
+const sampleScores = [78, 86, 67, 91, 73, 82, 64, 88, 75, 93, 69, 80, 84, 71, 96, 62, 89, 76, 83, 68, 92, 74, 87, 65];
+const sampleAttendance = [91, 96, 78, 99, 86, 93, 71, 95, 88, 98, 76, 90, 94, 82, 99, 69, 97, 85, 92, 74, 98, 87, 95, 79];
+const sampleColors = ["lavender", "peach", "mint", "blue", "rose", "yellow", "teal", "orange"];
+const additionalStudents = additionalStudentNames.map((name, index): Student => {
+  const score = sampleScores[index];
+  const attendance = sampleAttendance[index];
+  const risk: Student["risk"] = score < 70 || attendance < 80
+    ? "At risk"
+    : score < 80 || attendance < 90
+      ? "Watch"
+      : "On track";
+  return {
+    id: `ST-${2001 + index}`,
+    name,
+    initials: name.split(" ").map((part) => part[0]).join(""),
+    className: ["Year 10A", "Year 10B", "Year 9B"][index % 3],
+    score,
+    attendance,
+    trend: score >= 82 ? "up" : score < 70 ? "down" : "steady",
+    risk,
+    color: sampleColors[index % sampleColors.length],
+  };
+});
+
+export const students: Student[] = [...baseStudents, ...additionalStudents];
 
 export const performanceByWeek = [
   { week: "Aug 19", average: 69, attendance: 81 },

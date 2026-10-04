@@ -3,9 +3,7 @@
 import Link from "next/link";
 import {
   Activity,
-  ArrowDownRight,
   ArrowRight,
-  ArrowUpRight,
   Bell,
   BookOpen,
   CalendarDays,
@@ -16,7 +14,6 @@ import {
   Download,
   GraduationCap,
   LayoutDashboard,
-  Search,
   Settings2,
   ShieldAlert,
   Sparkles,
@@ -35,10 +32,12 @@ import {
 } from "recharts";
 import { useEffect, useMemo, useState } from "react";
 import { RecordEntry } from "@/components/record-entry";
+import { StudentForm } from "@/components/student-form";
+import { StudentTable } from "@/components/student-table";
+import { saveStudentRoster, useStudentRoster } from "@/lib/student-store";
 import {
   performanceByWeek,
   performanceThisTerm,
-  students,
   type Student,
 } from "@/lib/mock-data";
 import { saveStudentRecord, useStudentRecords } from "@/lib/record-store";
@@ -84,12 +83,15 @@ function Avatar({ student }: { student: Pick<Student, "initials" | "color"> }) {
 export default function Home() {
   const [activePage, setActivePage] = useState("Overview");
   const { records, error: storageError } = useStudentRecords();
+  const { students, error: rosterStorageError } = useStudentRoster();
   const [timeRange, setTimeRange] = useState("Last 7 weeks");
   const [classFilter, setClassFilter] = useState("All classes");
   const [searchTerm, setSearchTerm] = useState("");
   const [showHelp, setShowHelp] = useState(false);
   const [riskFilter, setRiskFilter] = useState("All students");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [editingStudent, setEditingStudent] = useState<Student | undefined>();
+  const [showStudentForm, setShowStudentForm] = useState(false);
   const [recordStudentId, setRecordStudentId] = useState<string | undefined>();
   const classNames = Array.from(new Set(students.map((student) => student.className))).sort();
   const chartData = timeRange === "This term" ? performanceThisTerm : performanceByWeek;
@@ -120,11 +122,47 @@ export default function Home() {
       const matchesRisk = riskFilter === "All students" || student.risk === riskFilter;
       return matchesClass && matchesQuery && matchesRisk;
     });
-  }, [classFilter, riskFilter, searchTerm]);
+  }, [classFilter, riskFilter, searchTerm, students]);
 
   const interventions = [...atRiskStudents]
     .sort((first, second) => first.attendance - second.attendance)
     .slice(0, 3);
+  const strongestClass = classes.reduce((best, current) => (current.average > best.average ? current : best), classes[0]);
+  const topPerformer = [...students].sort((first, second) => second.score - first.score)[0];
+  const spotlightStudent = atRiskStudents[0] ?? students[0];
+  const focusCards = [
+    {
+      label: "At-risk check-ins",
+      value: `${atRiskStudents.length} students`,
+      badge: "Priority",
+      tone: "danger",
+      onClick: () => {
+        setRiskFilter("At risk");
+        setActivePage("Students");
+      },
+    },
+    {
+      label: "Strongest class momentum",
+      value: strongestClass.name,
+      badge: "Trend",
+      tone: "success",
+      onClick: () => {
+        setClassFilter(strongestClass.name);
+        setRiskFilter("All students");
+        setSearchTerm("");
+        setActivePage("Students");
+      },
+    },
+    {
+      label: "Coach follow-up",
+      value: `${interventions.length} students`,
+      badge: "Support",
+      tone: "warning",
+      onClick: () => {
+        if (interventions[0]) setSelectedStudent(interventions[0]);
+      },
+    },
+  ];
 
   useEffect(() => {
     if (!selectedStudent) return;
@@ -135,10 +173,10 @@ export default function Home() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [selectedStudent]);
 
-  function exportStudents() {
+  function exportStudents(exportList = filteredStudents) {
     const rows = [
       ["Student ID", "Name", "Class", "Average score", "Attendance", "Risk"],
-      ...filteredStudents.map((student) => [
+      ...exportList.map((student) => [
         student.id,
         student.name,
         student.className,
@@ -158,6 +196,29 @@ export default function Home() {
 
   function addRecord(record: StudentRecord) {
     return saveStudentRecord(record);
+  }
+
+  function nextStudentId() {
+    const latestId = students.reduce((highest, student) => {
+      const number = Number(student.id.replace(/\D/g, ""));
+      return Number.isFinite(number) ? Math.max(highest, number) : highest;
+    }, 1000);
+    return `ST-${latestId + 1}`;
+  }
+
+  function saveStudent(student: Student) {
+    const nextStudents = editingStudent
+      ? students.map((item) => item.id === editingStudent.id ? student : item)
+      : [student, ...students];
+    if (!editingStudent && students.some((item) => item.id === student.id)) return false;
+    return saveStudentRoster(nextStudents);
+  }
+
+  function editSelectedStudent() {
+    if (!selectedStudent) return;
+    setEditingStudent(selectedStudent);
+    setSelectedStudent(null);
+    setShowStudentForm(true);
   }
 
   function openStudentRecord(student: Student) {
@@ -251,7 +312,7 @@ export default function Home() {
 
         <div className="dashboard-content">
           {activePage === "Record data" ? (
-            <RecordEntry records={records} storageError={storageError} onAdd={addRecord} selectedStudentId={recordStudentId} />
+            <RecordEntry records={records} storageError={storageError} onAdd={addRecord} selectedStudentId={recordStudentId} students={students} />
           ) : activePage === "Classes" ? (
             <>
               <section className="welcome-row">
@@ -287,7 +348,7 @@ export default function Home() {
               <h1>{activePage === "Students" ? "Your students" : activePage === "Reports" ? "Classroom reports" : <>Good morning, Ahmed <span className="wave">✳</span></>}</h1>
               <p>{activePage === "Students" ? "Search, filter, and keep up with each student’s progress." : activePage === "Reports" ? "Explore performance trends and export a snapshot for your records." : "Here’s what’s happening with your students this week."}</p>
             </div>
-            <button className="export-button" onClick={exportStudents} type="button"><Download size={16} /> Export report</button>
+            <button className="export-button" onClick={() => exportStudents()} type="button"><Download size={16} /> Export report</button>
           </section>
 
           {activePage !== "Students" && <section className="metrics-grid" aria-label="Classroom summary">
@@ -296,6 +357,75 @@ export default function Home() {
             <MetricCard label="Attendance rate" value={`${averageAttendance}%`} caption="Across the sample roster" icon={CalendarDays} />
             <MetricCard label="Needs a check-in" value={String(atRiskStudents.length)} caption="Flagged by sample indicators" icon={ShieldAlert} />
           </section>}
+
+          {activePage !== "Students" && (
+            <section className="overview-board" aria-label="Student focus areas">
+              <article className="panel spotlight-panel">
+                <div className="panel-heading">
+                  <div><h2>Student spotlight</h2><p>Top performer this week</p></div>
+                  <span className="focus-pill">Live</span>
+                </div>
+                <div className="spotlight-surface">
+                  <div className="spotlight-profile">
+                    <Avatar student={topPerformer} />
+                    <div>
+                      <span className="spotlight-tag">Top performer</span>
+                      <h3>{topPerformer.name}</h3>
+                      <p>{topPerformer.className}</p>
+                    </div>
+                  </div>
+                  <div className="spotlight-stats">
+                    <div>
+                      <span>Score</span>
+                      <strong>{topPerformer.score}%</strong>
+                    </div>
+                    <div>
+                      <span>Attendance</span>
+                      <strong>{topPerformer.attendance}%</strong>
+                    </div>
+                    <div>
+                      <span>Trend</span>
+                      <strong>{topPerformer.trend === "up" ? "Rising" : topPerformer.trend === "down" ? "Cooling" : "Stable"}</strong>
+                    </div>
+                  </div>
+                  <div className="spotlight-bars">
+                    <div>
+                      <span>Performance</span>
+                      <div className="mini-track"><i style={{ width: `${topPerformer.score}%` }} /></div>
+                      <strong>{topPerformer.score}%</strong>
+                    </div>
+                    <div>
+                      <span>Attendance</span>
+                      <div className="mini-track"><i style={{ width: `${topPerformer.attendance}%` }} /></div>
+                      <strong>{topPerformer.attendance}%</strong>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article className="panel focus-panel">
+                <div className="panel-heading">
+                  <div><h2>Action queue</h2><p>Priority moments to review</p></div>
+                  <span className="alert-count">{focusCards.length}</span>
+                </div>
+                <div className="focus-list">
+                  {focusCards.map((item) => (
+                    <button key={item.label} type="button" className="focus-item" onClick={item.onClick}>
+                      <div className="focus-head">
+                        <span className={`focus-badge ${item.tone}`}>{item.badge}</span>
+                        <strong>{item.label}</strong>
+                      </div>
+                      <span className="focus-value">{item.value}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="focus-footer">
+                  <span><Sparkles size={14} /> Student support snapshot</span>
+                  <button type="button" onClick={() => setSelectedStudent(spotlightStudent)}>View profile <ArrowRight size={14} /></button>
+                </div>
+              </article>
+            </section>
+          )}
 
           {activePage !== "Students" && <section className="insights-grid">
             <article className="panel performance-panel">
@@ -365,55 +495,38 @@ export default function Home() {
             </article>
           </section>}
 
-          {(activePage === "Overview" || activePage === "Students") && <section className="panel students-panel">
-            <div className="students-heading">
-              <div><h2>{activePage === "Students" ? "Student roster" : "Student overview"}</h2><p>{activePage === "Students" ? "A closer look at your students’ current progress" : "A snapshot of how everyone is doing"}</p></div>
-              <div className="student-controls">
-                <label className="search-box"><Search size={15} /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search students" aria-label="Search students" /></label>
-                <label className="select-wrap class-select">
-                  <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)} aria-label="Filter by class">
-                    <option>All classes</option>
-                    {classNames.map((className) => <option key={className}>{className}</option>)}
-                  </select>
-                  <ChevronDown size={14} />
-                </label>
-                <label className="select-wrap risk-select">
-                  <select value={riskFilter} onChange={(event) => setRiskFilter(event.target.value)} aria-label="Filter by student status">
-                    <option>All students</option>
-                    <option>At risk</option>
-                    <option>Watch</option>
-                    <option>On track</option>
-                  </select>
-                  <ChevronDown size={14} />
-                </label>
-              </div>
-            </div>
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr><th>STUDENT</th><th>CLASS</th><th>AVERAGE SCORE</th><th>ATTENDANCE</th><th>TREND</th><th>STATUS</th></tr>
-                </thead>
-                <tbody>
-                  {(activePage === "Students" ? filteredStudents : filteredStudents.slice(0, 5)).map((student) => (
-                    <tr key={student.id}>
-                      <td><button className="student-cell student-cell-button" type="button" onClick={() => setSelectedStudent(student)} aria-label={`View ${student.name}'s profile`}><Avatar student={student} /><span><strong>{student.name}</strong><small>{student.id}</small></span></button></td>
-                      <td className="muted-cell">{student.className}</td>
-                      <td><div className="score-cell"><span>{student.score}%</span><span className="score-track"><i style={{ width: `${student.score}%` }} /></span></div></td>
-                      <td><span className={student.attendance < 80 ? "attendance-low" : "muted-cell"}>{student.attendance}%</span></td>
-                      <td><span className={`trend trend-${student.trend}`}>{student.trend === "up" ? <ArrowUpRight size={15} /> : student.trend === "down" ? <ArrowDownRight size={15} /> : <span className="trend-dash">—</span>}{student.trend === "steady" ? "Steady" : student.trend === "up" ? "Improving" : "Declining"}</span></td>
-                      <td><span className={`status status-${student.risk.toLowerCase().replace(" ", "-")}`}><i />{student.risk}</span></td>
-                    </tr>
-                  ))}
-                  {filteredStudents.length === 0 && <tr><td className="empty-state" colSpan={6}>No students match these filters. Try another name, class, or status.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-            <div className="table-footer">
-              <span>Showing <strong>{filteredStudents.length === 0 ? 0 : Math.min(activePage === "Students" ? filteredStudents.length : 5, filteredStudents.length)}</strong> of <strong>{filteredStudents.length}</strong> students</span>
-              {activePage !== "Students" && <button type="button" onClick={() => setActivePage("Students")}>View all students <ArrowRight size={14} /></button>}
-              {activePage === "Students" && <button type="button" onClick={() => { setClassFilter("All classes"); setRiskFilter("All students"); setSearchTerm(""); }}>Clear filters <X size={13} /></button>}
-            </div>
-          </section>}
+          {(activePage === "Overview" || activePage === "Students") && (
+            <>
+              {rosterStorageError && <div className="storage-error" role="alert">{rosterStorageError} You can still review the sample roster, but roster changes cannot be saved.</div>}
+              <StudentTable
+                students={filteredStudents}
+                allStudents={students}
+                classNames={classNames}
+                searchTerm={searchTerm}
+                classFilter={classFilter}
+                riskFilter={riskFilter}
+                compact={activePage !== "Students"}
+                onSearchChange={setSearchTerm}
+                onClassChange={setClassFilter}
+                onRiskChange={setRiskFilter}
+                onSelectStudent={setSelectedStudent}
+                onAddStudent={() => {
+                  setEditingStudent(undefined);
+                  setShowStudentForm(true);
+                }}
+                onExportSelected={exportStudents}
+                onClearFilters={() => {
+                  if (activePage !== "Students") {
+                    setActivePage("Students");
+                    return;
+                  }
+                  setClassFilter("All classes");
+                  setRiskFilter("All students");
+                  setSearchTerm("");
+                }}
+              />
+            </>
+          )}
 
           {activePage === "Reports" && <section className="reports-grid" aria-label="Classroom performance report">
             <article className="panel report-breakdown">
@@ -483,10 +596,26 @@ export default function Home() {
             </div>
             <div className="student-dialog-footer">
               <span>Demonstration profile · Sample data</span>
-              <button className="submit-record-button" type="button" onClick={() => openStudentRecord(selectedStudent)}><ClipboardPenLine size={15} /> Add update</button>
+              <div className="student-dialog-actions">
+                <button className="secondary-button" type="button" onClick={editSelectedStudent}>Edit profile</button>
+                <button className="submit-record-button" type="button" onClick={() => openStudentRecord(selectedStudent)}><ClipboardPenLine size={15} /> Add update</button>
+              </div>
             </div>
           </section>
         </div>
+      )}
+      {showStudentForm && (
+        <StudentForm
+          student={editingStudent}
+          classNames={classNames}
+          nextStudentId={nextStudentId()}
+          existingStudentIds={students.map((student) => student.id)}
+          onSave={saveStudent}
+          onClose={() => {
+            setShowStudentForm(false);
+            setEditingStudent(undefined);
+          }}
+        />
       )}
     </main>
   );

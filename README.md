@@ -1,19 +1,20 @@
 # Classroom Analytics
 
-A responsive student performance analytics dashboard for educators. Explore class-level trends, monitor a 24-student sample roster, review individual student profiles, and record classroom updates.
+A responsive student performance analytics dashboard for educators. Explore class-level trends, monitor a 48-student sample roster, review individual student profiles, and record classroom updates.
 
 ## Demo features
 
 - Classroom overview with live KPIs, a performance and attendance chart, and students flagged for a check-in
-- Searchable roster with class and support-status filters
-- Click-through student profiles with performance indicators and a recent activity timeline
+- Searchable roster with class and support-status filters, sortable columns, multi-select, and pagination
+- Add and edit student profiles with validated score, attendance, class, and calculated status indicators
+- Click-through student profiles with performance indicators, editable details, and a recent activity timeline
 - Class comparison and student wellbeing reports
 - Add assessments, attendance, assignments, and behavior notes
-- CSV export of the currently filtered student roster
-- Local browser storage for teacher-entered records
+- CSV export of the filtered roster or selected students
+- Local browser storage for roster changes and teacher-entered records
 - Responsive navigation, accessible dialogs, and reduced-motion support
 
-This is a portfolio demo. The roster and trend charts use illustrative sample data; record changes are stored in the current browser only. There is no sign-in, database, cross-device sync, or predictive model. Do not enter real or sensitive student information.
+This is a portfolio demo. The initial roster and trend charts use illustrative sample data; roster edits and teacher-entered records are stored in the current browser only. There is no sign-in, database, cross-device sync, or predictive model. Status indicators are illustrative, not a diagnosis. Do not enter real or sensitive student information.
 
 ## Run locally
 
